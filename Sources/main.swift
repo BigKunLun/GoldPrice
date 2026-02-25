@@ -116,12 +116,188 @@ class PriceHistoryManager {
 
 // MARK: - Price Card View
 class PriceCardView: NSView {
+    private let iconLabel = NSTextField()
     private let nameLabel = NSTextField()
     private let priceLabel = NSTextField()
     private let changeLabel = NSTextField()
     private let highLowLabel = NSTextField()
 
     private var lastPrice: String = ""
+    private var cardStyle: CardStyle = .domestic
+
+    enum CardStyle {
+        case domestic   // 金色
+        case international  // 蓝色
+    }
+
+    init(style: CardStyle) {
+        self.cardStyle = style
+        super.init(frame: .zero)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupUI()
+    }
+
+    private func setupUI() {
+        wantsLayer = true
+        layer?.cornerRadius = 12
+
+        // Set background based on style
+        let bgColor: NSColor
+        switch cardStyle {
+        case .domestic:
+            bgColor = NSColor(red: 1.0, green: 0.92, blue: 0.7, alpha: 0.3)  // 暖金色
+        case .international:
+            bgColor = NSColor(red: 0.7, green: 0.85, blue: 1.0, alpha: 0.3)  // 冷蓝色
+        }
+        layer?.backgroundColor = bgColor.cgColor
+
+        // Title row: Icon + Name
+        let titleRow = NSStackView()
+        titleRow.orientation = .horizontal
+        titleRow.alignment = .centerY
+        titleRow.spacing = 6
+        titleRow.translatesAutoresizingMaskIntoConstraints = false
+
+        // Icon
+        iconLabel.font = NSFont.systemFont(ofSize: 14)
+        iconLabel.backgroundColor = .clear
+        iconLabel.isBezeled = false
+        iconLabel.isEditable = false
+        iconLabel.setContentHuggingPriority(.required, for: .horizontal)
+        titleRow.addArrangedSubview(iconLabel)
+
+        // Name
+        nameLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        nameLabel.textColor = NSColor.labelColor
+        nameLabel.backgroundColor = .clear
+        nameLabel.isBezeled = false
+        nameLabel.isEditable = false
+        titleRow.addArrangedSubview(nameLabel)
+
+        // Price row: Price | Change
+        let priceRow = NSStackView()
+        priceRow.orientation = .horizontal
+        priceRow.alignment = .centerY
+        priceRow.distribution = .fill
+        priceRow.spacing = 8
+        priceRow.translatesAutoresizingMaskIntoConstraints = false
+
+        // Spacer
+        let spacer = NSView()
+        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        priceRow.addArrangedSubview(spacer)
+
+        // Price - large, bold
+        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 20, weight: .bold)
+        priceLabel.textColor = NSColor.labelColor
+        priceLabel.backgroundColor = .clear
+        priceLabel.isBezeled = false
+        priceLabel.isEditable = false
+        priceLabel.setContentHuggingPriority(.required, for: .horizontal)
+        priceRow.addArrangedSubview(priceLabel)
+
+        // Change - with background
+        changeLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        changeLabel.backgroundColor = .clear
+        changeLabel.isBezeled = false
+        changeLabel.isEditable = false
+        changeLabel.alignment = .center
+        changeLabel.setContentHuggingPriority(.required, for: .horizontal)
+        priceRow.addArrangedSubview(changeLabel)
+
+        // High/Low row
+        highLowLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+        highLowLabel.textColor = NSColor.secondaryLabelColor
+        highLowLabel.backgroundColor = .clear
+        highLowLabel.isBezeled = false
+        highLowLabel.isEditable = false
+        highLowLabel.alignment = .center
+
+        // Container
+        let container = NSStackView()
+        container.orientation = .vertical
+        container.alignment = .centerX
+        container.spacing = 4
+        container.translatesAutoresizingMaskIntoConstraints = false
+        container.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+
+        container.addArrangedSubview(titleRow)
+        container.addArrangedSubview(priceRow)
+        container.addArrangedSubview(highLowLabel)
+
+        addSubview(container)
+        NSLayoutConstraint.activate([
+            container.topAnchor.constraint(equalTo: topAnchor),
+            container.bottomAnchor.constraint(equalTo: bottomAnchor),
+            container.leadingAnchor.constraint(equalTo: leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: trailingAnchor)
+        ])
+    }
+
+    func update(name: String, icon: String, info: PriceInfo) {
+        iconLabel.stringValue = icon
+        nameLabel.stringValue = name
+        priceLabel.stringValue = info.price
+
+        // Check for price change and trigger flash
+        if lastPrice != info.price && !lastPrice.isEmpty {
+            flashBackground(isUp: info.isUp)
+        }
+        lastPrice = info.price
+
+        // Update change label with background color
+        if !info.changeRate.isEmpty {
+            let arrow = info.isUp ? "↑" : "↓"
+            changeLabel.stringValue = " \(arrow)\(info.changeRate) "
+            let textColor: NSColor = info.isUp ? .systemRed : .systemGreen
+            changeLabel.textColor = textColor
+            // Add background
+            changeLabel.wantsLayer = true
+            changeLabel.layer?.cornerRadius = 4
+            changeLabel.layer?.backgroundColor = textColor.withAlphaComponent(0.15).cgColor
+        } else {
+            changeLabel.stringValue = ""
+            changeLabel.layer?.backgroundColor = CGColor.clear
+        }
+
+        // Update high/low
+        var highLowText = ""
+        if info.dayHigh != "--" && info.dayLow != "--" {
+            highLowText = "▲\(info.dayHigh)   ▼\(info.dayLow)"
+        } else if info.dayHigh != "--" {
+            highLowText = "▲\(info.dayHigh)"
+        } else if info.dayLow != "--" {
+            highLowText = "▼\(info.dayLow)"
+        }
+        highLowLabel.stringValue = highLowText
+    }
+
+    private func flashBackground(isUp: Bool) {
+        let flashColor = isUp
+            ? NSColor.systemRed.withAlphaComponent(0.2)
+            : NSColor.systemGreen.withAlphaComponent(0.2)
+
+        let originalColor = layer?.backgroundColor
+
+        layer?.backgroundColor = flashColor.cgColor
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.4
+            context.allowsImplicitAnimation = true
+            layer?.backgroundColor = originalColor
+        }
+    }
+}
+
+// MARK: - International Card View (multiple items)
+class InternationalCardView: NSView {
+    private let iconLabel = NSTextField()
+    private let titleLabel = NSTextField()
+    private var priceRows: [(name: String, label: NSTextField, change: NSTextField)] = []
 
     init() {
         super.init(frame: .zero)
@@ -135,77 +311,90 @@ class PriceCardView: NSView {
 
     private func setupUI() {
         wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.backgroundColor = NSColor(red: 0.7, green: 0.85, blue: 1.0, alpha: 0.3).cgColor
 
-        // Single row layout: Name | Price | Change
-        let mainRow = NSStackView()
-        mainRow.orientation = .horizontal
-        mainRow.alignment = .centerY
-        mainRow.distribution = .fill
-        mainRow.spacing = 0
-        mainRow.translatesAutoresizingMaskIntoConstraints = false
+        // Title row
+        let titleRow = NSStackView()
+        titleRow.orientation = .horizontal
+        titleRow.alignment = .centerY
+        titleRow.spacing = 6
+        titleRow.translatesAutoresizingMaskIntoConstraints = false
 
-        // Name
-        nameLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        nameLabel.textColor = NSColor.secondaryLabelColor
-        nameLabel.backgroundColor = .clear
-        nameLabel.isBezeled = false
-        nameLabel.isEditable = false
-        nameLabel.setContentHuggingPriority(.required, for: .horizontal)
-        nameLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        mainRow.addArrangedSubview(nameLabel)
+        iconLabel.font = NSFont.systemFont(ofSize: 14)
+        iconLabel.stringValue = "🌍"
+        iconLabel.backgroundColor = .clear
+        iconLabel.isBezeled = false
+        iconLabel.isEditable = false
+        titleRow.addArrangedSubview(iconLabel)
 
-        // Fixed spacer between name and price
-        let spacer1 = NSView()
-        spacer1.translatesAutoresizingMaskIntoConstraints = false
-        spacer1.widthAnchor.constraint(equalToConstant: 16).isActive = true
-        spacer1.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        mainRow.addArrangedSubview(spacer1)
-
-        // Price - centered, prominent
-        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 16, weight: .semibold)
-        priceLabel.textColor = NSColor.labelColor
-        priceLabel.backgroundColor = .clear
-        priceLabel.isBezeled = false
-        priceLabel.isEditable = false
-        priceLabel.alignment = .center
-        priceLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        mainRow.addArrangedSubview(priceLabel)
-
-        // Fixed spacer between price and change
-        let spacer2 = NSView()
-        spacer2.translatesAutoresizingMaskIntoConstraints = false
-        spacer2.widthAnchor.constraint(equalToConstant: 12).isActive = true
-        spacer2.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        mainRow.addArrangedSubview(spacer2)
-
-        // Change
-        changeLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        changeLabel.backgroundColor = .clear
-        changeLabel.isBezeled = false
-        changeLabel.isEditable = false
-        changeLabel.alignment = .right
-        changeLabel.setContentHuggingPriority(.required, for: .horizontal)
-        changeLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
-        mainRow.addArrangedSubview(changeLabel)
-
-        // High/Low row - single line
-        highLowLabel.font = NSFont.systemFont(ofSize: 10, weight: .regular)
-        highLowLabel.textColor = NSColor.tertiaryLabelColor
-        highLowLabel.backgroundColor = .clear
-        highLowLabel.isBezeled = false
-        highLowLabel.isEditable = false
-        highLowLabel.alignment = .center
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.stringValue = "国际金价"
+        titleLabel.textColor = NSColor.labelColor
+        titleLabel.backgroundColor = .clear
+        titleLabel.isBezeled = false
+        titleLabel.isEditable = false
+        titleRow.addArrangedSubview(titleLabel)
 
         // Container
         let container = NSStackView()
         container.orientation = .vertical
         container.alignment = .centerX
-        container.spacing = 2
+        container.spacing = 6
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 6, left: 0, bottom: 6, right: 0)
+        container.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
 
-        container.addArrangedSubview(mainRow)
-        container.addArrangedSubview(highLowLabel)
+        container.addArrangedSubview(titleRow)
+
+        // Add price rows
+        for (name, _) in [("伦敦金", "london"), ("纽约金", "newyork")] {
+            let row = NSStackView()
+            row.orientation = .horizontal
+            row.alignment = .centerY
+            row.distribution = .fill
+            row.spacing = 8
+            row.translatesAutoresizingMaskIntoConstraints = false
+
+            // Name
+            let nameLabel = NSTextField()
+            nameLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+            nameLabel.stringValue = name
+            nameLabel.textColor = NSColor.secondaryLabelColor
+            nameLabel.backgroundColor = .clear
+            nameLabel.isBezeled = false
+            nameLabel.isEditable = false
+            nameLabel.setContentHuggingPriority(.required, for: .horizontal)
+            row.addArrangedSubview(nameLabel)
+
+            // Spacer
+            let spacer = NSView()
+            spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+            row.addArrangedSubview(spacer)
+
+            // Price
+            let priceLabel = NSTextField()
+            priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 16, weight: .bold)
+            priceLabel.textColor = NSColor.labelColor
+            priceLabel.backgroundColor = .clear
+            priceLabel.isBezeled = false
+            priceLabel.isEditable = false
+            priceLabel.alignment = .right
+            priceLabel.setContentHuggingPriority(.required, for: .horizontal)
+            row.addArrangedSubview(priceLabel)
+
+            // Change
+            let changeLabel = NSTextField()
+            changeLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+            changeLabel.backgroundColor = .clear
+            changeLabel.isBezeled = false
+            changeLabel.isEditable = false
+            changeLabel.alignment = .center
+            changeLabel.setContentHuggingPriority(.required, for: .horizontal)
+            row.addArrangedSubview(changeLabel)
+
+            container.addArrangedSubview(row)
+            priceRows.append((name: name, label: priceLabel, change: changeLabel))
+        }
 
         addSubview(container)
         NSLayoutConstraint.activate([
@@ -216,48 +405,27 @@ class PriceCardView: NSView {
         ])
     }
 
-    func update(name: String, info: PriceInfo) {
-        nameLabel.stringValue = name
-        priceLabel.stringValue = info.price
+    func update(london: PriceInfo, newyork: PriceInfo) {
+        let data: [(String, PriceInfo)] = [("伦敦金", london), ("纽约金", newyork)]
 
-        // Check for price change and trigger flash
-        if lastPrice != info.price && !lastPrice.isEmpty {
-            flashBackground(isUp: info.isUp)
-        }
-        lastPrice = info.price
+        for (index, (_, info)) in data.enumerated() {
+            guard index < priceRows.count else { continue }
+            let row = priceRows[index]
 
-        // Update change label
-        if !info.changeRate.isEmpty {
-            let arrow = info.isUp ? "↑" : "↓"
-            changeLabel.stringValue = "\(arrow)\(info.changeRate)"
-            changeLabel.textColor = info.isUp ? NSColor.systemRed : NSColor.systemGreen
-        } else {
-            changeLabel.stringValue = ""
-        }
+            row.label.stringValue = info.price
 
-        // Update high/low in single line
-        var highLowText = ""
-        if info.dayHigh != "--" && info.dayLow != "--" {
-            highLowText = "高 \(info.dayHigh)  低 \(info.dayLow)"
-        } else if info.dayHigh != "--" {
-            highLowText = "高 \(info.dayHigh)"
-        } else if info.dayLow != "--" {
-            highLowText = "低 \(info.dayLow)"
-        }
-        highLowLabel.stringValue = highLowText
-    }
-
-    private func flashBackground(isUp: Bool) {
-        let flashColor = isUp
-            ? NSColor.systemRed.withAlphaComponent(0.15)
-            : NSColor.systemGreen.withAlphaComponent(0.15)
-
-        layer?.backgroundColor = flashColor.cgColor
-
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.5
-            context.allowsImplicitAnimation = true
-            layer?.backgroundColor = CGColor.clear
+            if !info.changeRate.isEmpty {
+                let arrow = info.isUp ? "↑" : "↓"
+                row.change.stringValue = " \(arrow)\(info.changeRate) "
+                let textColor: NSColor = info.isUp ? .systemRed : .systemGreen
+                row.change.textColor = textColor
+                row.change.wantsLayer = true
+                row.change.layer?.cornerRadius = 4
+                row.change.layer?.backgroundColor = textColor.withAlphaComponent(0.15).cgColor
+            } else {
+                row.change.stringValue = ""
+                row.change.layer?.backgroundColor = CGColor.clear
+            }
         }
     }
 }
@@ -421,7 +589,7 @@ class GoldPriceService {
 class FloatingWindow: NSWindow {
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 220, height: 145),
+            contentRect: NSRect(x: 0, y: 0, width: 220, height: 200),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -447,16 +615,11 @@ class FloatingWindow: NSWindow {
 
 // MARK: - Floating Content View
 class FloatingContentView: NSView {
-    private var cards: [String: PriceCardView] = [:]
-    private let cardKeys = ["minsheng", "london", "newyork"]
-    private let cardNames = [
-        "minsheng": "民生",
-        "london": "伦敦金",
-        "newyork": "纽约金"
-    ]
+    private var domesticCard: PriceCardView?
+    private var internationalCard: InternationalCardView?
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 220, height: 145))
+        super.init(frame: NSRect(x: 0, y: 0, width: 220, height: 200))
         setupUI()
     }
 
@@ -471,10 +634,10 @@ class FloatingContentView: NSView {
         // Glass effect background
         let visualEffect = NSVisualEffectView()
         visualEffect.blendingMode = .behindWindow
-        visualEffect.material = .sidebar  // Better glass effect
+        visualEffect.material = .sidebar
         visualEffect.state = .active
         visualEffect.wantsLayer = true
-        visualEffect.layer?.cornerRadius = 12
+        visualEffect.layer?.cornerRadius = 14
         visualEffect.layer?.masksToBounds = true
         visualEffect.translatesAutoresizingMaskIntoConstraints = false
 
@@ -486,19 +649,21 @@ class FloatingContentView: NSView {
             visualEffect.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
 
-        // Card container with generous spacing
+        // Card container
         let container = NSStackView()
         container.orientation = .vertical
         container.alignment = .centerX
-        container.spacing = 8
+        container.spacing = 10
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
+        container.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
-        for key in cardKeys {
-            let card = PriceCardView()
-            cards[key] = card
-            container.addArrangedSubview(card)
-        }
+        // Domestic card (gold)
+        domesticCard = PriceCardView(style: .domestic)
+        container.addArrangedSubview(domesticCard!)
+
+        // International card (blue)
+        internationalCard = InternationalCardView()
+        container.addArrangedSubview(internationalCard!)
 
         visualEffect.addSubview(container)
         NSLayoutConstraint.activate([
@@ -510,11 +675,8 @@ class FloatingContentView: NSView {
     }
 
     func updatePrices(_ prices: GoldPrices) {
-        for key in cardKeys {
-            if let card = cards[key], let name = cardNames[key] {
-                card.update(name: name, info: prices.priceInfo(for: key))
-            }
-        }
+        domesticCard?.update(name: "民生银行积存金", icon: "🪙", info: prices.minsheng)
+        internationalCard?.update(london: prices.london, newyork: prices.newyork)
     }
 }
 
