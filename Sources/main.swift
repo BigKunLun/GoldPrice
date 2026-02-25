@@ -7,6 +7,8 @@ struct PriceInfo {
     var yesterdayPrice: String = "--"
     var changeRate: String = ""      // 如 "+2.43%"
     var changeAmount: String = ""    // 如 "+26.93"
+    var dayHigh: String = "--"       // 当日最高价
+    var dayLow: String = "--"        // 当日最低价
 
     var isUp: Bool {
         if let rate = Double(changeRate.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "+", with: "")) {
@@ -18,8 +20,6 @@ struct PriceInfo {
 
 struct GoldPrices {
     var minsheng = PriceInfo()
-    var icbc = PriceInfo()
-    var zheshang = PriceInfo()
     var london = PriceInfo()
     var newyork = PriceInfo()
     var lastUpdate: Date?
@@ -27,8 +27,6 @@ struct GoldPrices {
     func priceInfo(for key: String) -> PriceInfo {
         switch key {
         case "minsheng": return minsheng
-        case "icbc": return icbc
-        case "zheshang": return zheshang
         case "london": return london
         case "newyork": return newyork
         default: return PriceInfo()
@@ -49,6 +47,73 @@ struct APIResponse: Codable {
     let resultData: ResultData?
 }
 
+// MARK: - Price History Manager
+class PriceHistoryManager {
+    static let shared = PriceHistoryManager()
+
+    private let historyKey = "priceHistory"
+    private var history: [String: [String: [Double]]] = [:] // [date: [bankKey: [prices]]]
+
+    private init() {
+        loadHistory()
+    }
+
+    private func loadHistory() {
+        if let data = UserDefaults.standard.data(forKey: historyKey),
+           let decoded = try? JSONDecoder().decode([String: [String: [Double]]].self, from: data) {
+            history = decoded
+        }
+    }
+
+    private func saveHistory() {
+        if let data = try? JSONEncoder().encode(history) {
+            UserDefaults.standard.set(data, forKey: historyKey)
+        }
+    }
+
+    private func todayKey() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+
+    // 记录价格
+    func recordPrice(_ price: Double, for bankKey: String) {
+        let today = todayKey()
+        if history[today] == nil {
+            history[today] = [:]
+        }
+        if history[today]?[bankKey] == nil {
+            history[today]?[bankKey] = []
+        }
+        history[today]?[bankKey]?.append(price)
+        saveHistory()
+    }
+
+    // 获取当日最高/最低价
+    func getHighLow(for bankKey: String) -> (high: Double?, low: Double?) {
+        let today = todayKey()
+        guard let prices = history[today]?[bankKey], !prices.isEmpty else {
+            return (nil, nil)
+        }
+        return (prices.max(), prices.min())
+    }
+
+    // 清理旧数据（保留最近7天）
+    func cleanupOldData() {
+        let calendar = Calendar.current
+        let sevenDaysAgo = calendar.date(byAdding: .day, value: -7, to: Date())!
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        history = history.filter { key, _ in
+            guard let date = formatter.date(from: key) else { return false }
+            return date >= sevenDaysAgo
+        }
+        saveHistory()
+    }
+}
+
 // MARK: - Gold Price Service
 class GoldPriceService {
     static let shared = GoldPriceService()
@@ -66,13 +131,9 @@ class GoldPriceService {
         var prices = GoldPrices()
 
         async let minsheng = fetchMinsheng()
-        async let icbc = fetchICBC()
-        async let zheshang = fetchZheshang()
         async let international = fetchInternationalGold()
 
         prices.minsheng = await minsheng
-        prices.icbc = await icbc
-        prices.zheshang = await zheshang
 
         let intlPrices = await international
         prices.london = intlPrices.london
@@ -80,7 +141,21 @@ class GoldPriceService {
 
         prices.lastUpdate = Date()
 
+        // 记录国内金价历史并更新最高/最低价
+        updateHighLow(&prices.minsheng, for: "minsheng")
+
+        // 清理旧数据
+        PriceHistoryManager.shared.cleanupOldData()
+
         return prices
+    }
+
+    private func updateHighLow(_ info: inout PriceInfo, for bankKey: String) {
+        guard let price = Double(info.price), price > 0 else { return }
+        PriceHistoryManager.shared.recordPrice(price, for: bankKey)
+        let (high, low) = PriceHistoryManager.shared.getHighLow(for: bankKey)
+        if let h = high { info.dayHigh = String(format: "%.2f", h) }
+        if let l = low { info.dayLow = String(format: "%.2f", l) }
     }
 
     private func fetchMinsheng() async -> PriceInfo {
@@ -97,50 +172,6 @@ class GoldPriceService {
             }
         } catch {
             print("Minsheng fetch error: \(error)")
-        }
-        return info
-    }
-
-    private func fetchICBC() async -> PriceInfo {
-        var info = PriceInfo()
-        guard let url = URL(string: "https://api.jdjygold.com/gw2/generic/jrm/h5/m/icbcLatestPrice?productSku=2005453243") else { return info }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(["reqData": ["productSku": "2005453243"]])
-        do {
-            let (data, _) = try await session.data(for: request)
-            let response = try JSONDecoder().decode(APIResponse.self, from: data)
-            if let datas = response.resultData?.datas {
-                info.price = datas.price ?? "--"
-                info.yesterdayPrice = datas.yesterdayPrice ?? "--"
-                info.changeRate = datas.upAndDownRate ?? ""
-                info.changeAmount = datas.upAndDownAmt ?? ""
-            }
-        } catch {
-            print("ICBC fetch error: \(error)")
-        }
-        return info
-    }
-
-    private func fetchZheshang() async -> PriceInfo {
-        var info = PriceInfo()
-        guard let url = URL(string: "https://api.jdjygold.com/gw2/generic/jrm/h5/m/stdLatestPrice?productSku=1961543816") else { return info }
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try? JSONEncoder().encode(["reqData": ["productSku": "1961543816"]])
-        do {
-            let (data, _) = try await session.data(for: request)
-            let response = try JSONDecoder().decode(APIResponse.self, from: data)
-            if let datas = response.resultData?.datas {
-                info.price = datas.price ?? "--"
-                info.yesterdayPrice = datas.yesterdayPrice ?? "--"
-                info.changeRate = datas.upAndDownRate ?? ""
-                info.changeAmount = datas.upAndDownAmt ?? ""
-            }
-        } catch {
-            print("Zheshang fetch error: \(error)")
         }
         return info
     }
@@ -177,8 +208,8 @@ class GoldPriceService {
         return (london, newyork)
     }
 
-    // 解析新浪数据：当前价,昨收,开盘,最高,最低,...,昨收2
-    // 格式: "当前价,昨收,开盘,最高,最低,最低2,时间,昨收价,开盘价,..."
+    // 解析新浪数据：当前价,昨收,开盘,当前价2,最高,最低,时间,昨收(备用),...
+    // 格式: "5191.60,5141.430,5191.60,5191.90,5210.20,5122.02,16:41:00,5141.43,..."
     private func parseSinaData(_ line: String) -> PriceInfo {
         var info = PriceInfo()
         guard let start = line.firstIndex(of: "\""),
@@ -186,7 +217,7 @@ class GoldPriceService {
         let content = String(line[line.index(after: start)..<end])
         let parts = content.components(separatedBy: ",")
 
-        // 字段0: 当前价, 字段1: 昨收, 字段7: 昨收(备用)
+        // 字段0: 当前价, 字段1: 昨收, 字段4: 最高价, 字段5: 最低价, 字段7: 昨收(备用)
         if parts.count > 7 {
             if let currentPrice = Double(parts[0]) {
                 info.price = String(format: "%.2f", currentPrice)
@@ -206,6 +237,16 @@ class GoldPriceService {
                     let sign = change >= 0 ? "+" : ""
                     info.changeAmount = "\(sign)\(String(format: "%.2f", change))"
                     info.changeRate = "\(sign)\(String(format: "%.2f", changePercent))%"
+                }
+
+                // 解析最高价（字段4）
+                if let high = Double(parts[4]), high > 0 {
+                    info.dayHigh = String(format: "%.2f", high)
+                }
+
+                // 解析最低价（字段5）
+                if let low = Double(parts[5]), low > 0 {
+                    info.dayLow = String(format: "%.2f", low)
                 }
             }
         }
@@ -245,6 +286,8 @@ class FloatingContentView: NSView {
     private var prices = GoldPrices()
     private var priceLabels: [String: NSTextField] = [:]
     private var changeLabels: [String: NSTextField] = [:]
+    private var highLabels: [String: NSTextField] = [:]
+    private var lowLabels: [String: NSTextField] = [:]
     private var timeLabel: NSTextField!
 
     override init(frame: NSRect) {
@@ -273,10 +316,8 @@ class FloatingContentView: NSView {
         let domesticTitle = createLabel("国内金价 (元/克)", size: 11, bold: true, color: .white)
         container.addArrangedSubview(domesticTitle)
 
-        // 国内价格
-        addPriceRow(to: container, key: "minsheng", name: "民生银行")
-        addPriceRow(to: container, key: "icbc", name: "工商银行")
-        addPriceRow(to: container, key: "zheshang", name: "浙商银行")
+        // 国内价格 - 带最高/最低价
+        addPriceRowWithHighLow(to: container, key: "minsheng", name: "民生银行")
 
         // Separator
         let sep = NSBox()
@@ -289,9 +330,9 @@ class FloatingContentView: NSView {
         let intlTitle = createLabel("国际金价 (美元/盎司)", size: 11, bold: true, color: .white)
         container.addArrangedSubview(intlTitle)
 
-        // 国际价格
-        addPriceRow(to: container, key: "london", name: "伦敦金　")
-        addPriceRow(to: container, key: "newyork", name: "纽约金　")
+        // 国际价格 - 带最高/最低价
+        addPriceRowWithHighLow(to: container, key: "london", name: "伦敦金　")
+        addPriceRowWithHighLow(to: container, key: "newyork", name: "纽约金　")
 
         // Time
         timeLabel = createLabel("--:--:--", size: 10, bold: false, color: NSColor.lightGray)
@@ -344,14 +385,64 @@ class FloatingContentView: NSView {
         stack.addArrangedSubview(row)
     }
 
+    private func addPriceRowWithHighLow(to stack: NSStackView, key: String, name: String) {
+        let row = NSStackView()
+        row.orientation = .vertical
+        row.spacing = 2
+
+        // 主行：名称 + 价格 + 涨跌
+        let mainRow = NSStackView()
+        mainRow.orientation = .horizontal
+        mainRow.distribution = .fill
+        mainRow.spacing = 8
+
+        let nameLabel = createLabel(name, size: 11, bold: false, color: NSColor.lightGray)
+        nameLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let priceLabel = createLabel("----", size: 12, bold: true, color: NSColor.systemYellow)
+        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+        priceLabel.alignment = .right
+        priceLabels[key] = priceLabel
+
+        let changeLabel = createLabel("", size: 10, bold: false, color: NSColor.systemRed)
+        changeLabel.setContentHuggingPriority(.required, for: .horizontal)
+        changeLabels[key] = changeLabel
+
+        mainRow.addArrangedSubview(nameLabel)
+        mainRow.addArrangedSubview(priceLabel)
+        mainRow.addArrangedSubview(changeLabel)
+
+        // 次行：最高/最低价
+        let subRow = NSStackView()
+        subRow.orientation = .horizontal
+        subRow.spacing = 12
+
+        let spacer = createLabel("    ", size: 10, bold: false, color: .clear)
+        let highLabel = createLabel("高 --", size: 9, bold: false, color: NSColor.systemRed.withAlphaComponent(0.8))
+        let lowLabel = createLabel("低 --", size: 9, bold: false, color: NSColor.systemGreen.withAlphaComponent(0.8))
+
+        highLabels[key] = highLabel
+        lowLabels[key] = lowLabel
+
+        subRow.addArrangedSubview(spacer)
+        subRow.addArrangedSubview(highLabel)
+        subRow.addArrangedSubview(lowLabel)
+
+        row.addArrangedSubview(mainRow)
+        row.addArrangedSubview(subRow)
+
+        row.translatesAutoresizingMaskIntoConstraints = false
+        row.widthAnchor.constraint(equalToConstant: 200).isActive = true
+
+        stack.addArrangedSubview(row)
+    }
+
     func updatePrices(_ prices: GoldPrices) {
         self.prices = prices
 
-        updatePriceDisplay(key: "minsheng", info: prices.minsheng)
-        updatePriceDisplay(key: "icbc", info: prices.icbc)
-        updatePriceDisplay(key: "zheshang", info: prices.zheshang)
-        updatePriceDisplay(key: "london", info: prices.london)
-        updatePriceDisplay(key: "newyork", info: prices.newyork)
+        updatePriceDisplayWithHighLow(key: "minsheng", info: prices.minsheng)
+        updatePriceDisplayWithHighLow(key: "london", info: prices.london)
+        updatePriceDisplayWithHighLow(key: "newyork", info: prices.newyork)
 
         if let lastUpdate = prices.lastUpdate {
             let formatter = DateFormatter()
@@ -360,7 +451,7 @@ class FloatingContentView: NSView {
         }
     }
 
-    private func updatePriceDisplay(key: String, info: PriceInfo) {
+    private func updatePriceDisplayWithHighLow(key: String, info: PriceInfo) {
         priceLabels[key]?.stringValue = info.price
 
         if !info.changeRate.isEmpty {
@@ -369,6 +460,22 @@ class FloatingContentView: NSView {
             changeLabels[key]?.textColor = info.isUp ? NSColor.systemRed : NSColor.systemGreen  // 涨红跌绿
         } else {
             changeLabels[key]?.stringValue = ""
+        }
+
+        // 更新最高/最低价
+        if let highLabel = highLabels[key] {
+            if info.dayHigh != "--" {
+                highLabel.stringValue = "高 \(info.dayHigh)"
+            } else {
+                highLabel.stringValue = "高 --"
+            }
+        }
+        if let lowLabel = lowLabels[key] {
+            if info.dayLow != "--" {
+                lowLabel.stringValue = "低 \(info.dayLow)"
+            } else {
+                lowLabel.stringValue = "低 --"
+            }
         }
     }
 }
@@ -384,8 +491,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarPriceKey: String = "minsheng"
     private let priceOptions: [(key: String, name: String)] = [
         ("minsheng", "民生银行"),
-        ("icbc", "工商银行"),
-        ("zheshang", "浙商银行"),
         ("london", "伦敦金"),
         ("newyork", "纽约金")
     ]
@@ -397,8 +502,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     // Menu items
     private var minshengItem: NSMenuItem!
-    private var icbcItem: NSMenuItem!
-    private var zheshangItem: NSMenuItem!
     private var londonItem: NSMenuItem!
     private var newyorkItem: NSMenuItem!
     private var lastUpdateItem: NSMenuItem!
@@ -445,14 +548,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         minshengItem = NSMenuItem(title: "民生银行: --", action: nil, keyEquivalent: "")
         minshengItem.isEnabled = false
         menu.addItem(minshengItem)
-
-        icbcItem = NSMenuItem(title: "工商银行: --", action: nil, keyEquivalent: "")
-        icbcItem.isEnabled = false
-        menu.addItem(icbcItem)
-
-        zheshangItem = NSMenuItem(title: "浙商银行: --", action: nil, keyEquivalent: "")
-        zheshangItem.isEnabled = false
-        menu.addItem(zheshangItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -522,9 +617,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func setupFloatingWindow() {
         floatingWindow = FloatingWindow()
-        floatingContentView = FloatingContentView(frame: NSRect(x: 0, y: 0, width: 224, height: 195))
+        floatingContentView = FloatingContentView(frame: NSRect(x: 0, y: 0, width: 224, height: 200))
         floatingWindow?.contentView = floatingContentView
-        floatingWindow?.setContentSize(NSSize(width: 224, height: 195))
+        floatingWindow?.setContentSize(NSSize(width: 224, height: 200))
         floatingWindow?.positionAtTopRight()
     }
 
@@ -551,13 +646,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Menu items - 国内
-        minshengItem.title = formatMenuItem(name: "民生银行", info: prices.minsheng, unit: "元/克")
-        icbcItem.title = formatMenuItem(name: "工商银行", info: prices.icbc, unit: "元/克")
-        zheshangItem.title = formatMenuItem(name: "浙商银行", info: prices.zheshang, unit: "元/克")
+        minshengItem.title = formatMenuItemWithHighLow(name: "民生银行", info: prices.minsheng, unit: "元/克")
 
         // Menu items - 国际
-        londonItem.title = formatMenuItem(name: "伦敦金", info: prices.london, unit: "$/oz")
-        newyorkItem.title = formatMenuItem(name: "纽约金", info: prices.newyork, unit: "$/oz")
+        londonItem.title = formatMenuItemWithHighLow(name: "伦敦金", info: prices.london, unit: "$/oz")
+        newyorkItem.title = formatMenuItemWithHighLow(name: "纽约金", info: prices.newyork, unit: "$/oz")
 
         if let lastUpdate = prices.lastUpdate {
             let formatter = DateFormatter()
@@ -569,11 +662,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         floatingContentView?.updatePrices(prices)
     }
 
-    private func formatMenuItem(name: String, info: PriceInfo, unit: String) -> String {
+    private func formatMenuItemWithHighLow(name: String, info: PriceInfo, unit: String) -> String {
         var text = "\(name): \(info.price) \(unit)"
         if !info.changeRate.isEmpty {
             let arrow = info.isUp ? "📈" : "📉"
             text += " \(arrow)\(info.changeRate)"
+        }
+        // 添加最高/最低价
+        if info.dayHigh != "--" && info.dayLow != "--" {
+            text += " [\(info.dayLow)~\(info.dayHigh)]"
         }
         return text
     }
@@ -624,7 +721,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func performUpdateCheck() async {
-        let currentVersion = "1.4.0"
+        let currentVersion = "1.5.0"
         let repoURL = "https://api.github.com/repos/PiaoyangGuohai1/GoldPrice/releases/latest"
 
         guard let url = URL(string: repoURL) else { return }
