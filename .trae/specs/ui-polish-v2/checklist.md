@@ -1,0 +1,6 @@
+- [x] Check if `InternationalCardView` uses `NSGridView` for perfect column alignment
+- [x] Check if SF Symbols are used instead of Emojis
+- [x] Check if Domestic Price is aligned correctly and visually dominant
+- [x] Check if High/Low display is clear and readable
+- [x] Check if overall spacing is consistent (16pt padding)
+- [x] Check if build succeeds and app launches without crashing
