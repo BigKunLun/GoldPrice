@@ -256,7 +256,7 @@ class PriceCardView: NSView {
 
         // High/Low
         if info.dayHigh != "--" && info.dayLow != "--" {
-            highLowLabel.stringValue = "H:\(info.dayHigh)  L:\(info.dayLow)"
+            highLowLabel.stringValue = "高: \(info.dayHigh)  低: \(info.dayLow)"
         } else {
             highLowLabel.stringValue = ""
         }
@@ -309,8 +309,8 @@ class InternationalCardView: NSView {
         titleRow.translatesAutoresizingMaskIntoConstraints = false
 
         let iconImage = NSImageView()
-        iconImage.image = NSImage(systemSymbolName: "globe", accessibilityDescription: "Global")
-        iconImage.contentTintColor = .labelColor
+        iconImage.image = NSImage(systemSymbolName: "globe.asia.australia.fill", accessibilityDescription: "Global")
+        iconImage.contentTintColor = .systemBlue
         iconImage.symbolConfiguration = .init(pointSize: 12, weight: .regular)
         titleRow.addArrangedSubview(iconImage)
 
@@ -583,7 +583,7 @@ class GoldPriceService {
 class FloatingWindow: NSWindow {
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 260, height: 200),
+            contentRect: NSRect(x: 0, y: 0, width: 260, height: 210),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -611,9 +611,10 @@ class FloatingWindow: NSWindow {
 class FloatingContentView: NSView {
     private var domesticCard: PriceCardView?
     private var internationalCard: InternationalCardView?
+    private var timestampLabel: NSTextField?
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 200))
+        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 210))
         setupUI()
     }
 
@@ -649,7 +650,7 @@ class FloatingContentView: NSView {
         container.alignment = .leading
         container.spacing = 4 // Reduced spacing between sections
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
+        container.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 8, right: 16)
 
         // Domestic card
         domesticCard = PriceCardView()
@@ -661,6 +662,16 @@ class FloatingContentView: NSView {
         internationalCard!.translatesAutoresizingMaskIntoConstraints = false
         container.addArrangedSubview(internationalCard!)
 
+        // Timestamp
+        timestampLabel = NSTextField()
+        timestampLabel!.font = NSFont.monospacedDigitSystemFont(ofSize: 9, weight: .regular)
+        timestampLabel!.textColor = NSColor.tertiaryLabelColor
+        timestampLabel!.backgroundColor = .clear
+        timestampLabel!.isBezeled = false
+        timestampLabel!.isEditable = false
+        timestampLabel!.alignment = .right
+        container.addArrangedSubview(timestampLabel!)
+
         addSubview(container)
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: topAnchor),
@@ -668,13 +679,20 @@ class FloatingContentView: NSView {
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
             container.trailingAnchor.constraint(equalTo: trailingAnchor),
             domesticCard!.widthAnchor.constraint(equalTo: container.widthAnchor),
-            internationalCard!.widthAnchor.constraint(equalTo: container.widthAnchor)
+            internationalCard!.widthAnchor.constraint(equalTo: container.widthAnchor),
+            timestampLabel!.widthAnchor.constraint(equalTo: container.widthAnchor)
         ])
     }
 
     func updatePrices(_ prices: GoldPrices) {
         domesticCard?.update(name: "民生", icon: "yensign.circle.fill", info: prices.minsheng)
         internationalCard?.update(london: prices.london, newyork: prices.newyork)
+        
+        if let lastUpdate = prices.lastUpdate {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm:ss"
+            timestampLabel?.stringValue = "更新于 \(formatter.string(from: lastUpdate))"
+        }
     }
 }
 
