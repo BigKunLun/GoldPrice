@@ -143,17 +143,10 @@ class PriceCardView: NSView {
 
     private func setupUI() {
         wantsLayer = true
-        layer?.cornerRadius = 12
-
-        // Set background based on style
-        let bgColor: NSColor
-        switch cardStyle {
-        case .domestic:
-            bgColor = NSColor(red: 1.0, green: 0.92, blue: 0.7, alpha: 0.3)  // 暖金色
-        case .international:
-            bgColor = NSColor(red: 0.7, green: 0.85, blue: 1.0, alpha: 0.3)  // 冷蓝色
-        }
-        layer?.backgroundColor = bgColor.cgColor
+        layer?.cornerRadius = 0
+        layer?.masksToBounds = true
+        // 去掉纯色背景，使用透明让毛玻璃透出来
+        layer?.backgroundColor = CGColor.clear
 
         // Title row: Icon + Name
         let titleRow = NSStackView()
@@ -163,7 +156,7 @@ class PriceCardView: NSView {
         titleRow.translatesAutoresizingMaskIntoConstraints = false
 
         // Icon
-        iconLabel.font = NSFont.systemFont(ofSize: 14)
+        iconLabel.font = NSFont.systemFont(ofSize: 16)
         iconLabel.backgroundColor = .clear
         iconLabel.isBezeled = false
         iconLabel.isEditable = false
@@ -171,7 +164,7 @@ class PriceCardView: NSView {
         titleRow.addArrangedSubview(iconLabel)
 
         // Name
-        nameLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        nameLabel.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
         nameLabel.textColor = NSColor.labelColor
         nameLabel.backgroundColor = .clear
         nameLabel.isBezeled = false
@@ -183,7 +176,7 @@ class PriceCardView: NSView {
         priceRow.orientation = .horizontal
         priceRow.alignment = .centerY
         priceRow.distribution = .fill
-        priceRow.spacing = 8
+        priceRow.spacing = 10
         priceRow.translatesAutoresizingMaskIntoConstraints = false
 
         // Spacer
@@ -192,7 +185,7 @@ class PriceCardView: NSView {
         priceRow.addArrangedSubview(spacer)
 
         // Price - large, bold
-        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 20, weight: .bold)
+        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 22, weight: .bold)
         priceLabel.textColor = NSColor.labelColor
         priceLabel.backgroundColor = .clear
         priceLabel.isBezeled = false
@@ -201,7 +194,7 @@ class PriceCardView: NSView {
         priceRow.addArrangedSubview(priceLabel)
 
         // Change - with background
-        changeLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+        changeLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         changeLabel.backgroundColor = .clear
         changeLabel.isBezeled = false
         changeLabel.isEditable = false
@@ -209,21 +202,21 @@ class PriceCardView: NSView {
         changeLabel.setContentHuggingPriority(.required, for: .horizontal)
         priceRow.addArrangedSubview(changeLabel)
 
-        // High/Low row
-        highLowLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+        // High/Low row - 更大字体，居中铺开
+        highLowLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         highLowLabel.textColor = NSColor.secondaryLabelColor
         highLowLabel.backgroundColor = .clear
         highLowLabel.isBezeled = false
         highLowLabel.isEditable = false
         highLowLabel.alignment = .center
 
-        // Container
+        // Container - 增加间距，整体居中
         let container = NSStackView()
         container.orientation = .vertical
         container.alignment = .centerX
-        container.spacing = 4
+        container.spacing = 6
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 10, left: 14, bottom: 10, right: 14)
+        container.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 12, right: 16)
 
         container.addArrangedSubview(titleRow)
         container.addArrangedSubview(priceRow)
@@ -234,7 +227,9 @@ class PriceCardView: NSView {
             container.topAnchor.constraint(equalTo: topAnchor),
             container.bottomAnchor.constraint(equalTo: bottomAnchor),
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
-            container.trailingAnchor.constraint(equalTo: trailingAnchor)
+            container.trailingAnchor.constraint(equalTo: trailingAnchor),
+            container.centerXAnchor.constraint(equalTo: centerXAnchor),
+            container.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
     }
 
@@ -311,8 +306,10 @@ class InternationalCardView: NSView {
 
     private func setupUI() {
         wantsLayer = true
-        layer?.cornerRadius = 12
-        layer?.backgroundColor = NSColor(red: 0.7, green: 0.85, blue: 1.0, alpha: 0.3).cgColor
+        layer?.cornerRadius = 0
+        layer?.masksToBounds = true
+        // 去掉纯色背景，使用透明让毛玻璃透出来
+        layer?.backgroundColor = CGColor.clear
 
         // Title row
         let titleRow = NSStackView()
@@ -631,14 +628,15 @@ class FloatingContentView: NSView {
     private func setupUI() {
         wantsLayer = true
 
-        // Glass effect background
+        // Glass effect background - 更透明的毛玻璃
         let visualEffect = NSVisualEffectView()
         visualEffect.blendingMode = .behindWindow
-        visualEffect.material = .sidebar
+        visualEffect.material = .popover
         visualEffect.state = .active
         visualEffect.wantsLayer = true
         visualEffect.layer?.cornerRadius = 14
         visualEffect.layer?.masksToBounds = true
+        visualEffect.alphaValue = 0.7  // 70%透明度
         visualEffect.translatesAutoresizingMaskIntoConstraints = false
 
         addSubview(visualEffect)
@@ -649,28 +647,34 @@ class FloatingContentView: NSView {
             visualEffect.trailingAnchor.constraint(equalTo: trailingAnchor)
         ])
 
-        // Card container
+        // Card container - 卡片铺满宽度
         let container = NSStackView()
         container.orientation = .vertical
-        container.alignment = .centerX
-        container.spacing = 10
+        container.alignment = .leading
+        container.distribution = .fill  // 改为 fill
+        container.spacing = 2
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        container.edgeInsets = NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)
 
         // Domestic card (gold)
         domesticCard = PriceCardView(style: .domestic)
+        domesticCard!.translatesAutoresizingMaskIntoConstraints = false
         container.addArrangedSubview(domesticCard!)
 
         // International card (blue)
         internationalCard = InternationalCardView()
+        internationalCard!.translatesAutoresizingMaskIntoConstraints = false
         container.addArrangedSubview(internationalCard!)
 
         visualEffect.addSubview(container)
         NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: visualEffect.topAnchor),
-            container.bottomAnchor.constraint(equalTo: visualEffect.bottomAnchor),
-            container.leadingAnchor.constraint(equalTo: visualEffect.leadingAnchor),
-            container.trailingAnchor.constraint(equalTo: visualEffect.trailingAnchor)
+            container.topAnchor.constraint(equalTo: self.topAnchor),
+            container.bottomAnchor.constraint(equalTo: self.bottomAnchor),
+            container.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: self.trailingAnchor),
+            // 让卡片铺满宽度
+            domesticCard!.widthAnchor.constraint(equalTo: container.widthAnchor),
+            internationalCard!.widthAnchor.constraint(equalTo: container.widthAnchor)
         ])
     }
 
