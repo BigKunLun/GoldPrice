@@ -854,10 +854,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func updateUI() {
-        // Status bar - 只显示价格，不显示涨跌
+        // Status bar - 显示价格和涨跌幅
         if let button = statusItem.button {
             let info = prices.priceInfo(for: statusBarPriceKey)
-            button.title = "金: \(info.price)"
+            var title = "金: \(info.price)"
+            if !info.changeRate.isEmpty {
+                title += " \(info.changeRate)"
+            }
+            button.title = title
         }
 
         // Menu items - 国内
