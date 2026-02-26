@@ -1,12 +1,12 @@
-# JDGold - macOS 黄金价格监控应用
+# GoldPrice - macOS 黄金价格监控应用
 
 ## 项目概述
 
 一个极简的 macOS 菜单栏应用，实时监控国内外黄金价格。
 
-- **应用名称**：JDGold
-- **Bundle ID**：com.jdgold.monitor
-- **版本**：1.5.0 (Build 5)
+- **应用名称**：GoldPrice
+- **Bundle ID**：com.goldprice.monitor
+- **版本**：2.0.0 (Build 2)
 - **类型**：macOS 原生菜单栏应用（LSUIElement，无 Dock 图标）
 - **语言**：Swift 5.9
 - **框架**：AppKit (Cocoa) — 无第三方依赖
@@ -153,7 +153,7 @@ struct GoldPrices {
 
 - **涨跌颜色**：涨红（red）跌绿（green），符合中国股市习惯
 - **视觉效果**：`NSVisualEffectView`，材质 `hudWindow`，圆角背景
-- **悬浮窗尺寸**：260 × 250 pt，默认定位右上角（距屏幕边缘 20pt）
+- **悬浮窗尺寸**：260 × 240 pt，默认定位右上角（距屏幕边缘 20pt）
 - **悬浮窗行为**：`NSWindowCollectionBehavior.stationary`，在所有 Space 显示，不激活应用
 - **图标系统**：SF Symbols（yensign.circle、dollarsign.circle、globe、arrow.up/down）
 - **价格变化动画**：0.4秒背景闪烁动画（`flashBackground()`）
@@ -167,7 +167,7 @@ struct GoldPrices {
 | `startAutoRefresh` | AppDelegate | 启动定时刷新 |
 | `refreshPrices` | AppDelegate | 触发价格刷新（async） |
 | `setupMenu` | AppDelegate | 构建下拉菜单 |
-| `formatMenuItemWithHighLow` | AppDelegate | 带高低价的菜单项格式化 |
+| `formatMenuItemAttributed` | AppDelegate | 带高低价的菜单项格式化 |
 | `performUpdateCheck` | AppDelegate | GitHub 版本检查 |
 | `fetchMinsheng` | GoldPriceService | 获取国内金价 |
 | `fetchInternationalGold` | GoldPriceService | 获取国际金价 |
@@ -192,6 +192,7 @@ struct GoldPrices {
 
 | 版本 | 变更 |
 |------|------|
+| 2.0.0 | 版本号动态读取、刷新间隔持久化、isUp 逻辑简化 |
 | 1.5.0 | 添加日内高低价，移除工商银行/浙商银行 |
 | 1.4.0 | 精确涨跌计算，UI 优化 |
 | 1.3.0 | 可自定义状态栏显示内容 |

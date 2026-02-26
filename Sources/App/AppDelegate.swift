@@ -33,6 +33,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             statusBarPriceKey = saved
         }
 
+        // 读取保存的刷新间隔
+        let savedInterval = UserDefaults.standard.integer(forKey: "refreshInterval")
+        if savedInterval > 0 {
+            refreshInterval = TimeInterval(savedInterval)
+        }
+
         setupStatusItem()
         setupMenu()
         setupFloatingWindow()
@@ -290,6 +296,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         sender.state = .on
         refreshInterval = TimeInterval(sender.tag)
+        UserDefaults.standard.set(sender.tag, forKey: "refreshInterval")
         startRefreshing()
     }
 
@@ -303,7 +310,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func performUpdateCheck() async {
-        let currentVersion = "1.5.0"
+        let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0.0"
         let repoURL = "https://api.github.com/repos/BigKunLun/GoldPrice/releases/latest"
 
         guard let url = URL(string: repoURL) else { return }

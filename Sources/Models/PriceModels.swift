@@ -10,10 +10,8 @@ struct PriceInfo {
     var dayLow: String = "--"        // 当日最低价
 
     var isUp: Bool {
-        if let rate = Double(changeRate.replacingOccurrences(of: "%", with: "").replacingOccurrences(of: "+", with: "")) {
-            return rate >= 0
-        }
-        return changeRate.hasPrefix("+") || (!changeRate.hasPrefix("-") && !changeRate.isEmpty)
+        guard !changeRate.isEmpty else { return true }
+        return !changeRate.hasPrefix("-")
     }
 }
 

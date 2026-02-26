@@ -12,12 +12,12 @@ echo "🔨 Building $APP_NAME..."
 mkdir -p $APP_NAME.app/Contents/MacOS
 mkdir -p $APP_NAME.app/Contents/Resources
 
-# Compile
+# Compile with macOS 12.0 minimum deployment target
 swiftc -O \
+    -target arm64-apple-macos12.0 \
     -o $APP_NAME.app/Contents/MacOS/$APP_NAME \
     $(find Sources -name "*.swift") \
-    -framework Cocoa \
-    2>&1
+    -framework Cocoa
 
 # Copy Info.plist
 cp Info.plist $APP_NAME.app/Contents/Info.plist
