@@ -26,7 +26,7 @@
 - 🌍 **国际金价** - 伦敦金 (XAU)、纽约金 (COMEX)
 - 📈 **涨跌显示** - 实时显示涨跌幅，涨红跌绿
 - ⏱️ **自动刷新** - 支持 3/5/10/30/60 秒刷新间隔
-- 🎨 **极简设计** - 单文件 ~570 行代码，无任何依赖
+- 🎨 **极简设计** - 模块化架构，清晰易读，无任何依赖
 
 ## 截图
 
@@ -114,7 +114,12 @@ xattr -cr /Applications/JDGold.app
 ```
 JDGold/
 ├── Sources/
-│   └── main.swift      # 全部源代码
+│   ├── App/            # 应用生命周期
+│   ├── Models/         # 数据模型
+│   ├── Services/       # 业务服务
+│   ├── UI/             # 窗口组件
+│   ├── Views/          # 视图组件
+│   └── main.swift      # 入口文件
 ├── Resources/
 │   ├── AppIcon.icns    # 应用图标
 │   ├── AppIcon.iconset # 图标源文件

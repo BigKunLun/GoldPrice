@@ -7,7 +7,7 @@
 - **类型**：macOS 原生菜单栏应用
 - **语言**：Swift 5.9
 - **框架**：AppKit (Cocoa)
-- **特点**：单文件架构，无第三方依赖，约 570 行代码
+- **特点**：模块化架构，无第三方依赖
 - **最低系统要求**：macOS 12.0+
 
 ## 常用命令
@@ -20,49 +20,34 @@
 open JDGold.app
 
 # 手动编译（调试用）
-swiftc -O -o JDGold.app/Contents/MacOS/JDGold Sources/main.swift -framework Cocoa
+swiftc -O -o JDGold.app/Contents/MacOS/JDGold $(find Sources -name "*.swift") -framework Cocoa
 ```
 
 ## 架构概览
 
-### 单文件架构 (`Sources/main.swift`)
+### 模块化架构 (`Sources/`)
 
-所有代码都在一个文件中，按 MARK 注释分隔：
+项目按照职责划分为以下模块：
 
-```
-┌─────────────────────────────────────────────────────────┐
-│ Data Models                                             │
-│ - PriceInfo: 单个金价数据（价格、涨跌幅、涨跌额）          │
-│ - GoldPrices: 所有金价集合                               │
-│ - APIResponse: API 响应解析                              │
-├─────────────────────────────────────────────────────────┤
-│ GoldPriceService (Singleton)                            │
-│ - fetchAllPrices(): 并发获取所有价格                      │
-│ - fetchMinsheng/fetchICBC/fetchZheshang: 国内金价        │
-│ - fetchInternationalGold: 国际金价（伦敦金、纽约金）       │
-├─────────────────────────────────────────────────────────┤
-│ UI Components                                           │
-│ - FloatingWindow: 悬浮窗口（可拖拽、始终置顶）             │
-│ - FloatingContentView: 悬浮窗内容视图                     │
-├─────────────────────────────────────────────────────────┤
-│ AppDelegate                                             │
-│ - 菜单栏图标管理                                         │
-│ - 下拉菜单构建                                           │
-│ - 定时刷新逻辑                                           │
-│ - 用户偏好存储 (UserDefaults)                            │
-└─────────────────────────────────────────────────────────┘
-```
+- **Models**: 数据模型定义 (PriceInfo, GoldPrices, APIResponse, PriceRecord)
+- **Services**: 核心业务逻辑 (GoldPriceService, PriceHistoryManager)
+- **Views**: 视图组件 (PriceCardView, InternationalCardView, MiniChartView)
+- **UI**: 窗口与布局 (FloatingWindow, FloatingContentView)
+- **App**: 应用生命周期 (AppDelegate)
+- **main.swift**: 仅作为应用入口
 
-### 主要组件
+### 核心组件职责
 
-| 组件 | 职责 |
-|------|------|
-| `PriceInfo` | 数据模型：价格、昨收价、涨跌幅、涨跌额 |
-| `GoldPrices` | 聚合所有金价数据 |
-| `GoldPriceService` | 单例服务，负责 API 请求和数据处理 |
-| `FloatingWindow` | 悬浮窗口 NSWindow 子类 |
-| `FloatingContentView` | 悬浮窗内容视图 NSView 子类 |
-| `AppDelegate` | 主应用逻辑，菜单栏管理 |
+| 组件 | 模块 | 职责 |
+|------|------|------|
+| `PriceInfo` | Models | 数据模型：价格、昨收价、涨跌幅、涨跌额 |
+| `PriceRecord` | Models | 历史记录模型：时间戳、价格 |
+| `GoldPriceService` | Services | 单例服务，负责 API 请求和数据处理 |
+| `PriceHistoryManager` | Services | 历史数据管理，含 24h 滑动窗口逻辑 |
+| `PriceCardView` | Views | 国内金价卡片，包含 `MiniChartView` |
+| `InternationalCardView` | Views | 国际金价卡片 |
+| `FloatingWindow` | UI | 悬浮窗口 NSWindow 子类 |
+| `AppDelegate` | App | 主应用逻辑，菜单栏管理 |
 
 ## 数据来源
 
@@ -81,11 +66,13 @@ swiftc -O -o JDGold.app/Contents/MacOS/JDGold Sources/main.swift -framework Coco
 
 | 文件 | 说明 |
 |------|------|
-| `Sources/main.swift` | 全部源代码（~570 行）|
-| `Info.plist` | 应用配置（Bundle ID、版本号等）|
-| `Package.swift` | Swift Package Manager 配置 |
-| `build.sh` | 构建脚本（编译 + 打包）|
-| `Resources/AppIcon.icns` | 应用图标 |
+| `Sources/App/AppDelegate.swift` | 主应用逻辑 |
+| `Sources/Services/GoldPriceService.swift` | 核心服务 |
+| `Sources/Views/` | 视图组件目录 |
+| `Sources/Models/` | 数据模型目录 |
+| `Sources/main.swift` | 入口文件 |
+| `Info.plist` | 应用配置 |
+| `build.sh` | 构建脚本 |
 
 ## 开发注意事项
 
