@@ -4,15 +4,13 @@ import Foundation
 // MARK: - Price Card View
 class PriceCardView: NSView {
     private let mainStack = NSStackView()
-    private let topRow = NSStackView()
-    private let iconImage = NSImageView()
-    private let nameLabel = NSTextField()
-
+    private let primaryRow = NSStackView()
+    // Removed title/icon elements as requested
+    
     private let changeStack = NSStackView()
     private let changeIcon = NSImageView()
     private let changeLabel = NSTextField()
 
-    private let priceRow = NSStackView()
     private let priceLabel = NSTextField()
     private let unitLabel = NSTextField()
 
@@ -42,30 +40,33 @@ class PriceCardView: NSView {
 
         mainStack.orientation = .vertical
         mainStack.alignment = .leading
-        mainStack.spacing = 4
+        mainStack.spacing = 6
         mainStack.translatesAutoresizingMaskIntoConstraints = false
 
-        // Top row: icon + name ... change indicator
-        topRow.orientation = .horizontal
-        topRow.alignment = .centerY
-        topRow.spacing = 5
-        topRow.translatesAutoresizingMaskIntoConstraints = false
+        // Primary Row: Price + Unit + Spacer + Change
+        primaryRow.orientation = .horizontal
+        primaryRow.alignment = .firstBaseline
+        primaryRow.spacing = 4
+        primaryRow.translatesAutoresizingMaskIntoConstraints = false
 
-        iconImage.image = NSImage(systemSymbolName: "yensign.circle.fill", accessibilityDescription: "Currency")
-        iconImage.contentTintColor = .systemYellow
-        iconImage.symbolConfiguration = .init(pointSize: 13, weight: .regular)
-        topRow.addArrangedSubview(iconImage)
+        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 26, weight: .bold)
+        priceLabel.textColor = NSColor.labelColor
+        priceLabel.backgroundColor = .clear
+        priceLabel.isBezeled = false
+        priceLabel.isEditable = false
+        primaryRow.addArrangedSubview(priceLabel)
 
-        nameLabel.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        nameLabel.textColor = NSColor.secondaryLabelColor
-        nameLabel.backgroundColor = .clear
-        nameLabel.isBezeled = false
-        nameLabel.isEditable = false
-        topRow.addArrangedSubview(nameLabel)
+        unitLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
+        unitLabel.textColor = NSColor.tertiaryLabelColor
+        unitLabel.backgroundColor = .clear
+        unitLabel.isBezeled = false
+        unitLabel.isEditable = false
+        unitLabel.stringValue = "元/克"
+        primaryRow.addArrangedSubview(unitLabel)
 
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        topRow.addArrangedSubview(spacer)
+        primaryRow.addArrangedSubview(spacer)
 
         changeStack.orientation = .horizontal
         changeStack.alignment = .centerY
@@ -80,31 +81,8 @@ class PriceCardView: NSView {
         changeLabel.isEditable = false
         changeStack.addArrangedSubview(changeLabel)
 
-        topRow.addArrangedSubview(changeStack)
-        mainStack.addArrangedSubview(topRow)
-
-        // Price row: large price + unit
-        priceRow.orientation = .horizontal
-        priceRow.alignment = .firstBaseline
-        priceRow.spacing = 4
-        priceRow.translatesAutoresizingMaskIntoConstraints = false
-
-        priceLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 26, weight: .bold)
-        priceLabel.textColor = NSColor.labelColor
-        priceLabel.backgroundColor = .clear
-        priceLabel.isBezeled = false
-        priceLabel.isEditable = false
-        priceRow.addArrangedSubview(priceLabel)
-
-        unitLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
-        unitLabel.textColor = NSColor.tertiaryLabelColor
-        unitLabel.backgroundColor = .clear
-        unitLabel.isBezeled = false
-        unitLabel.isEditable = false
-        unitLabel.stringValue = "元/克"
-        priceRow.addArrangedSubview(unitLabel)
-
-        mainStack.addArrangedSubview(priceRow)
+        primaryRow.addArrangedSubview(changeStack)
+        mainStack.addArrangedSubview(primaryRow)
 
         // High/Low row
         highLowRow.orientation = .horizontal
@@ -157,14 +135,15 @@ class PriceCardView: NSView {
         chartView.isHidden = true
         mainStack.addArrangedSubview(chartView)
 
+        chartView.heightAnchor.constraint(equalToConstant: 60).isActive = true
+
         addSubview(mainStack)
         NSLayoutConstraint.activate([
             mainStack.topAnchor.constraint(equalTo: topAnchor, constant: 10),
-            mainStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
-            mainStack.leadingAnchor.constraint(equalTo: leadingAnchor),
-            mainStack.trailingAnchor.constraint(equalTo: trailingAnchor),
-            topRow.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
-            priceRow.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
+            mainStack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: 0),
+            mainStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            mainStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            primaryRow.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
             highLowRow.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
             chartView.widthAnchor.constraint(equalTo: mainStack.widthAnchor)
         ])
@@ -172,16 +151,13 @@ class PriceCardView: NSView {
 
     func update(name: String, icon: String, info: PriceInfo) {
         if name.contains("民生") {
-            iconImage.image = NSImage(systemSymbolName: "yensign.circle.fill", accessibilityDescription: "CNY")
             bankKey = "minsheng"
             unitLabel.stringValue = "元/克"
         } else {
-            iconImage.image = NSImage(systemSymbolName: "dollarsign.circle.fill", accessibilityDescription: "USD")
             bankKey = "other"
             unitLabel.stringValue = "$/oz"
         }
 
-        nameLabel.stringValue = name
         priceLabel.stringValue = info.price
 
         if lastPrice != info.price && !lastPrice.isEmpty {

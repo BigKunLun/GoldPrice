@@ -5,7 +5,7 @@ import Foundation
 class FloatingWindow: NSWindow {
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: 350),
+            contentRect: NSRect(x: 0, y: 0, width: 260, height: 240),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -36,7 +36,7 @@ class FloatingContentView: NSView {
     private let updateTimeLabel = NSTextField()
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 330))
+        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 240))
         setupUI()
     }
 
@@ -69,10 +69,10 @@ class FloatingContentView: NSView {
         // Container
         let container = NSStackView()
         container.orientation = .vertical
-        container.alignment = .center
+        container.alignment = .centerX
         container.spacing = 0
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 4, left: 16, bottom: 10, right: 16)
+        container.edgeInsets = NSEdgeInsets(top: 10, left: 0, bottom: 16, right: 0)
 
         // Domestic card
         domesticCard = PriceCardView()
@@ -80,10 +80,12 @@ class FloatingContentView: NSView {
         container.addArrangedSubview(domesticCard!)
 
         // Separator line
-        let separator = NSBox()
-        separator.boxType = .separator
+        let separator = NSView()
+        separator.wantsLayer = true
+        separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
         separator.translatesAutoresizingMaskIntoConstraints = false
-        separator.alphaValue = 0.2
+        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
+        separator.alphaValue = 0.3
         container.addArrangedSubview(separator)
 
         // International card
@@ -103,8 +105,8 @@ class FloatingContentView: NSView {
         container.addArrangedSubview(updateTimeLabel)
 
         // Custom spacing
-        container.setCustomSpacing(2, after: domesticCard!)
-        container.setCustomSpacing(2, after: separator)
+        container.setCustomSpacing(8, after: domesticCard!)
+        container.setCustomSpacing(12, after: separator)
         container.setCustomSpacing(6, after: internationalCard!)
 
         addSubview(container)

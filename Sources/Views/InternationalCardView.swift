@@ -3,7 +3,7 @@ import Foundation
 
 // MARK: - International Card View
 class InternationalCardView: NSView {
-    private let titleRow = NSStackView()
+    // Removed titleRow
     private var londonLabels: (price: NSTextField, changeIcon: NSImageView, changeLabel: NSTextField, highLow: NSTextField)!
     private var newyorkLabels: (price: NSTextField, changeIcon: NSImageView, changeLabel: NSTextField, highLow: NSTextField)!
 
@@ -23,30 +23,8 @@ class InternationalCardView: NSView {
         container.alignment = .leading
         container.spacing = 6
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 6, left: 0, bottom: 10, right: 0)
-
-        // Title row: 国际金价
-        titleRow.orientation = .horizontal
-        titleRow.alignment = .centerY
-        titleRow.spacing = 5
-        titleRow.translatesAutoresizingMaskIntoConstraints = false
-
-        let iconImage = NSImageView()
-        iconImage.image = NSImage(systemSymbolName: "globe.asia.australia.fill", accessibilityDescription: "Global")
-        iconImage.contentTintColor = .systemBlue
-        iconImage.symbolConfiguration = .init(pointSize: 12, weight: .regular)
-        titleRow.addArrangedSubview(iconImage)
-
-        let titleLabel = NSTextField()
-        titleLabel.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
-        titleLabel.stringValue = "国际金价"
-        titleLabel.textColor = NSColor.secondaryLabelColor
-        titleLabel.backgroundColor = .clear
-        titleLabel.isBezeled = false
-        titleLabel.isEditable = false
-        titleRow.addArrangedSubview(titleLabel)
-
-        container.addArrangedSubview(titleRow)
+        // Removed edgeInsets as we use layout constraints now
+        // container.edgeInsets = NSEdgeInsets(top: 0, left: 12, bottom: 4, right: 12)
 
         // London section
         let londonRow = createPriceRow(name: "伦敦金")
@@ -72,8 +50,8 @@ class InternationalCardView: NSView {
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: topAnchor),
             container.bottomAnchor.constraint(equalTo: bottomAnchor),
-            container.leadingAnchor.constraint(equalTo: leadingAnchor),
-            container.trailingAnchor.constraint(equalTo: trailingAnchor),
+            container.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            container.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             londonRow.container.widthAnchor.constraint(equalTo: container.widthAnchor),
             newyorkRow.container.widthAnchor.constraint(equalTo: container.widthAnchor)
         ])
@@ -82,8 +60,8 @@ class InternationalCardView: NSView {
     private func createPriceRow(name: String) -> (container: NSStackView, price: NSTextField, changeIcon: NSImageView, changeLabel: NSTextField) {
         let row = NSStackView()
         row.orientation = .horizontal
-        row.alignment = .centerY
-        row.spacing = 8
+        row.alignment = .firstBaseline
+        row.spacing = 0
         row.translatesAutoresizingMaskIntoConstraints = false
 
         let nameLabel = createLabel(name, fontSize: 13, weight: .regular, color: .labelColor)
@@ -94,12 +72,24 @@ class InternationalCardView: NSView {
         row.addArrangedSubview(spacer)
 
         let priceLabel = createLabel("--", fontSize: 15, weight: .bold, color: .labelColor, monospaced: true)
+        priceLabel.alignment = .right
+        priceLabel.widthAnchor.constraint(equalToConstant: 80).isActive = true
         row.addArrangedSubview(priceLabel)
+
+        let gap = NSView()
+        gap.widthAnchor.constraint(equalToConstant: 8).isActive = true
+        row.addArrangedSubview(gap)
 
         let changeStack = NSStackView()
         changeStack.orientation = .horizontal
         changeStack.alignment = .centerY
         changeStack.spacing = 2
+        changeStack.translatesAutoresizingMaskIntoConstraints = false
+        changeStack.widthAnchor.constraint(equalToConstant: 75).isActive = true
+
+        let changeSpacer = NSView()
+        changeSpacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        changeStack.addArrangedSubview(changeSpacer)
 
         let changeIcon = NSImageView()
         changeIcon.symbolConfiguration = .init(pointSize: 10, weight: .bold)
@@ -107,9 +97,6 @@ class InternationalCardView: NSView {
 
         let changeLabel = createLabel("", fontSize: 12, weight: .medium, color: .secondaryLabelColor, monospaced: true)
         changeStack.addArrangedSubview(changeLabel)
-
-        // Fixed width for change column to maintain alignment
-        changeStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 70).isActive = true
 
         row.addArrangedSubview(changeStack)
 
