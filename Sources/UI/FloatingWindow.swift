@@ -5,7 +5,7 @@ import Foundation
 class FloatingWindow: NSWindow {
     init() {
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 260, height: 250),
+            contentRect: NSRect(x: 0, y: 0, width: 300, height: 350),
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -33,9 +33,10 @@ class FloatingWindow: NSWindow {
 class FloatingContentView: NSView {
     private var domesticCard: PriceCardView?
     private var internationalCard: InternationalCardView?
+    private let updateTimeLabel = NSTextField()
 
     init() {
-        super.init(frame: NSRect(x: 0, y: 0, width: 260, height: 230))
+        super.init(frame: NSRect(x: 0, y: 0, width: 300, height: 330))
         setupUI()
     }
 
@@ -50,10 +51,10 @@ class FloatingContentView: NSView {
         // Glass effect background
         let visualEffect = NSVisualEffectView()
         visualEffect.blendingMode = .behindWindow
-        visualEffect.material = .hudWindow // Darker/Modern look
+        visualEffect.material = .hudWindow
         visualEffect.state = .active
         visualEffect.wantsLayer = true
-        visualEffect.layer?.cornerRadius = 16
+        visualEffect.layer?.cornerRadius = 14
         visualEffect.layer?.masksToBounds = true
         visualEffect.translatesAutoresizingMaskIntoConstraints = false
 
@@ -68,20 +69,43 @@ class FloatingContentView: NSView {
         // Container
         let container = NSStackView()
         container.orientation = .vertical
-        container.alignment = .leading
-        container.spacing = 4 // Reduced spacing between sections
+        container.alignment = .center
+        container.spacing = 0
         container.translatesAutoresizingMaskIntoConstraints = false
-        container.edgeInsets = NSEdgeInsets(top: 12, left: 16, bottom: 8, right: 16)
+        container.edgeInsets = NSEdgeInsets(top: 4, left: 16, bottom: 10, right: 16)
 
         // Domestic card
         domesticCard = PriceCardView()
         domesticCard!.translatesAutoresizingMaskIntoConstraints = false
         container.addArrangedSubview(domesticCard!)
 
+        // Separator line
+        let separator = NSBox()
+        separator.boxType = .separator
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.alphaValue = 0.2
+        container.addArrangedSubview(separator)
+
         // International card
         internationalCard = InternationalCardView()
         internationalCard!.translatesAutoresizingMaskIntoConstraints = false
         container.addArrangedSubview(internationalCard!)
+
+        // Update time label
+        updateTimeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
+        updateTimeLabel.textColor = NSColor.tertiaryLabelColor
+        updateTimeLabel.backgroundColor = .clear
+        updateTimeLabel.isBezeled = false
+        updateTimeLabel.isEditable = false
+        updateTimeLabel.alignment = .center
+        updateTimeLabel.stringValue = ""
+        updateTimeLabel.translatesAutoresizingMaskIntoConstraints = false
+        container.addArrangedSubview(updateTimeLabel)
+
+        // Custom spacing
+        container.setCustomSpacing(2, after: domesticCard!)
+        container.setCustomSpacing(2, after: separator)
+        container.setCustomSpacing(6, after: internationalCard!)
 
         addSubview(container)
         NSLayoutConstraint.activate([
@@ -90,6 +114,7 @@ class FloatingContentView: NSView {
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
             container.trailingAnchor.constraint(equalTo: trailingAnchor),
             domesticCard!.widthAnchor.constraint(equalTo: container.widthAnchor),
+            separator.widthAnchor.constraint(equalTo: container.widthAnchor, constant: -24),
             internationalCard!.widthAnchor.constraint(equalTo: container.widthAnchor)
         ])
     }
@@ -97,5 +122,12 @@ class FloatingContentView: NSView {
     func updatePrices(_ prices: GoldPrices) {
         domesticCard?.update(name: "民生", icon: "yensign.circle.fill", info: prices.minsheng)
         internationalCard?.update(london: prices.london, newyork: prices.newyork)
+
+        // Update time
+        if let lastUpdate = prices.lastUpdate {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "HH:mm:ss"
+            updateTimeLabel.stringValue = "更新于 \(formatter.string(from: lastUpdate))"
+        }
     }
 }

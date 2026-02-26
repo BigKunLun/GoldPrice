@@ -50,7 +50,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func setupMenu() {
         let menu = NSMenu()
 
-        let titleItem = NSMenuItem(title: "金价监控", action: nil, keyEquivalent: "")
+        // Title
+        let titleItem = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        titleItem.attributedTitle = makeAttributedString("金价监控", fontSize: 13, weight: .bold, color: .labelColor)
         titleItem.isEnabled = false
         menu.addItem(titleItem)
         menu.addItem(NSMenuItem.separator())
@@ -61,8 +63,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(showFloatingWindowItem)
         menu.addItem(NSMenuItem.separator())
 
-        // 国内金价
-        let domesticHeader = NSMenuItem(title: "── 国内金价 ──", action: nil, keyEquivalent: "")
+        // 国内金价 header
+        let domesticHeader = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        domesticHeader.attributedTitle = makeSectionHeader("国内金价")
         domesticHeader.isEnabled = false
         menu.addItem(domesticHeader)
 
@@ -72,8 +75,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        // 国际金价
-        let intlHeader = NSMenuItem(title: "── 国际金价 ──", action: nil, keyEquivalent: "")
+        // 国际金价 header
+        let intlHeader = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        intlHeader.attributedTitle = makeSectionHeader("国际金价")
         intlHeader.isEnabled = false
         menu.addItem(intlHeader)
 
@@ -159,45 +163,99 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor
     private func updateUI() {
-        // Status bar - 显示价格和涨跌幅
+        // Status bar
         if let button = statusItem.button {
             let info = prices.priceInfo(for: statusBarPriceKey)
             var title = "金: \(info.price)"
             if !info.changeRate.isEmpty {
-                title += " \(info.changeRate)"
+                let arrow = info.isUp ? "▲" : "▼"
+                title += " \(arrow)\(info.changeRate)"
             }
             button.title = title
         }
 
-        // Menu items - 国内
-        minshengItem.title = formatMenuItemWithHighLow(name: "民生银行", info: prices.minsheng, unit: "元/克")
-
-        // Menu items - 国际
-        londonItem.title = formatMenuItemWithHighLow(name: "伦敦金", info: prices.london, unit: "$/oz")
-        newyorkItem.title = formatMenuItemWithHighLow(name: "纽约金", info: prices.newyork, unit: "$/oz")
+        // Menu items with attributed titles
+        minshengItem.attributedTitle = formatMenuItemAttributed(name: "民生银行", info: prices.minsheng, unit: "元/克")
+        londonItem.attributedTitle = formatMenuItemAttributed(name: "伦敦金", info: prices.london, unit: "$/oz")
+        newyorkItem.attributedTitle = formatMenuItemAttributed(name: "纽约金", info: prices.newyork, unit: "$/oz")
 
         if let lastUpdate = prices.lastUpdate {
             let formatter = DateFormatter()
             formatter.dateFormat = "HH:mm:ss"
-            lastUpdateItem.title = "更新时间: \(formatter.string(from: lastUpdate))"
+            let timeStr = "更新于 \(formatter.string(from: lastUpdate))"
+            lastUpdateItem.attributedTitle = makeAttributedString(timeStr, fontSize: 11, weight: .regular, color: .tertiaryLabelColor)
         }
 
         // Floating window
         floatingContentView?.updatePrices(prices)
     }
 
-    private func formatMenuItemWithHighLow(name: String, info: PriceInfo, unit: String) -> String {
-        var text = "\(name): \(info.price) \(unit)"
+    // MARK: - Attributed String Helpers
+
+    private func makeSectionHeader(_ title: String) -> NSAttributedString {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: NSColor.secondaryLabelColor
+        ]
+        return NSAttributedString(string: title, attributes: attrs)
+    }
+
+    private func makeAttributedString(_ text: String, fontSize: CGFloat, weight: NSFont.Weight, color: NSColor) -> NSAttributedString {
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: fontSize, weight: weight),
+            .foregroundColor: color
+        ]
+        return NSAttributedString(string: text, attributes: attrs)
+    }
+
+    private func formatMenuItemAttributed(name: String, info: PriceInfo, unit: String) -> NSAttributedString {
+        let result = NSMutableAttributedString()
+
+        // Name
+        let nameAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium),
+            .foregroundColor: NSColor.labelColor
+        ]
+        result.append(NSAttributedString(string: "\(name)  ", attributes: nameAttrs))
+
+        // Price + unit
+        let priceAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .bold),
+            .foregroundColor: NSColor.labelColor
+        ]
+        result.append(NSAttributedString(string: "\(info.price) ", attributes: priceAttrs))
+
+        let unitAttrs: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: NSColor.tertiaryLabelColor
+        ]
+        result.append(NSAttributedString(string: unit, attributes: unitAttrs))
+
+        // Change rate with emoji
         if !info.changeRate.isEmpty {
             let arrow = info.isUp ? "📈" : "📉"
-            text += " \(arrow)\(info.changeRate)"
+            let changeColor = info.isUp ? NSColor.systemRed : NSColor.systemGreen
+            let changeAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
+                .foregroundColor: changeColor
+            ]
+            result.append(NSAttributedString(string: " \(arrow)", attributes: changeAttrs))
+            result.append(NSAttributedString(string: info.changeRate, attributes: changeAttrs))
         }
-        // 添加最高/最低价
+
+        // High/Low
         if info.dayHigh != "--" && info.dayLow != "--" {
-            text += " [\(info.dayLow)~\(info.dayHigh)]"
+            let hlAttrs: [NSAttributedString.Key: Any] = [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular),
+                .foregroundColor: NSColor.tertiaryLabelColor
+            ]
+            result.append(NSAttributedString(string: "  [\(info.dayLow)~\(info.dayHigh)]", attributes: hlAttrs))
         }
-        return text
+
+        return result
     }
+
+    // MARK: - Actions
 
     @objc private func toggleFloatingWindow() {
         if floatingWindow?.isVisible == true {
