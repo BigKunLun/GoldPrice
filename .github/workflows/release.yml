@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Create ZIP
+        run: |
+          cd GoldPrice.app/..
+          zip -r GoldPrice-macOS.zip GoldPrice.app
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: GoldPrice-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
