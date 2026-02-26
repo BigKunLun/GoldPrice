@@ -13,7 +13,7 @@ mkdir -p JDGold.app/Contents/Resources
 # Compile
 swiftc -O \
     -o JDGold.app/Contents/MacOS/JDGold \
-    Sources/main.swift \
+    $(find Sources -name "*.swift") \
     -framework Cocoa \
     2>&1
 

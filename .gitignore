@@ -1,5 +1,6 @@
 # Build artifacts
 GoldPrice.app/
+JDGold.app/
 .build/
 *.o
 *.d
@@ -13,6 +14,16 @@ GoldPrice.app/
 *.xcodeproj/
 *.xcworkspace/
 xcuserdata/
+
+# IDE
+.trae/
+.idea/
+*.xcodeproj/
+*.xcworkspace/
+docs/
+
+# Playwright
+.playwright-mcp/
 
 # Release
 *.zip
