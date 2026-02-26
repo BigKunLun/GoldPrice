@@ -304,7 +304,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor
     private func performUpdateCheck() async {
         let currentVersion = "1.5.0"
-        let repoURL = "https://api.github.com/repos/PiaoyangGuohai1/GoldPrice/releases/latest"
+        let repoURL = "https://api.github.com/repos/BigKunLun/GoldPrice/releases/latest"
 
         guard let url = URL(string: repoURL) else { return }
 
@@ -323,7 +323,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     alert.addButton(withTitle: "稍后再说")
 
                     if alert.runModal() == .alertFirstButtonReturn {
-                        if let downloadURL = URL(string: "https://github.com/PiaoyangGuohai1/GoldPrice/releases/latest") {
+                        if let downloadURL = URL(string: "https://github.com/BigKunLun/GoldPrice/releases/latest") {
                             NSWorkspace.shared.open(downloadURL)
                         }
                     }
