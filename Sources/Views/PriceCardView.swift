@@ -14,12 +14,6 @@ class PriceCardView: NSView {
     private let priceLabel = NSTextField()
     private let unitLabel = NSTextField()
 
-    private let highLowRow = NSStackView()
-    private let highLabel = NSTextField()
-    private let highValue = NSTextField()
-    private let lowLabel = NSTextField()
-    private let lowValue = NSTextField()
-
     private let chartView = MiniChartView()
 
     private var lastPrice: String = ""
@@ -84,52 +78,6 @@ class PriceCardView: NSView {
         primaryRow.addArrangedSubview(changeStack)
         mainStack.addArrangedSubview(primaryRow)
 
-        // High/Low row
-        highLowRow.orientation = .horizontal
-        highLowRow.alignment = .centerY
-        highLowRow.spacing = 3
-        highLowRow.translatesAutoresizingMaskIntoConstraints = false
-
-        highLabel.font = NSFont.systemFont(ofSize: 10, weight: .regular)
-        highLabel.textColor = NSColor.tertiaryLabelColor
-        highLabel.stringValue = "高"
-        highLabel.backgroundColor = .clear
-        highLabel.isBezeled = false
-        highLabel.isEditable = false
-        highLowRow.addArrangedSubview(highLabel)
-
-        highValue.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
-        highValue.textColor = NSColor.secondaryLabelColor
-        highValue.stringValue = "--"
-        highValue.backgroundColor = .clear
-        highValue.isBezeled = false
-        highValue.isEditable = false
-        highLowRow.addArrangedSubview(highValue)
-
-        let hlSpacer = NSView()
-        hlSpacer.translatesAutoresizingMaskIntoConstraints = false
-        hlSpacer.widthAnchor.constraint(equalToConstant: 8).isActive = true
-        highLowRow.addArrangedSubview(hlSpacer)
-
-        lowLabel.font = NSFont.systemFont(ofSize: 10, weight: .regular)
-        lowLabel.textColor = NSColor.tertiaryLabelColor
-        lowLabel.stringValue = "低"
-        lowLabel.backgroundColor = .clear
-        lowLabel.isBezeled = false
-        lowLabel.isEditable = false
-        highLowRow.addArrangedSubview(lowLabel)
-
-        lowValue.font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .medium)
-        lowValue.textColor = NSColor.secondaryLabelColor
-        lowValue.stringValue = "--"
-        lowValue.backgroundColor = .clear
-        lowValue.isBezeled = false
-        lowValue.isEditable = false
-        highLowRow.addArrangedSubview(lowValue)
-
-        highLowRow.isHidden = true
-        mainStack.addArrangedSubview(highLowRow)
-
         // Chart view
         chartView.translatesAutoresizingMaskIntoConstraints = false
         chartView.isHidden = true
@@ -144,7 +92,6 @@ class PriceCardView: NSView {
             mainStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             mainStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             primaryRow.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
-            highLowRow.widthAnchor.constraint(equalTo: mainStack.widthAnchor),
             chartView.widthAnchor.constraint(equalTo: mainStack.widthAnchor)
         ])
     }
@@ -181,18 +128,12 @@ class PriceCardView: NSView {
             changeIcon.isHidden = true
         }
 
-        // Update high/low
-        if info.dayHigh != "--" && info.dayLow != "--" {
-            highValue.stringValue = info.dayHigh
-            lowValue.stringValue = info.dayLow
-            highLowRow.isHidden = false
-        } else {
-            highLowRow.isHidden = true
-        }
-
         let records = PriceHistoryManager.shared.getRecordsInLast24Hours(for: bankKey)
         if records.count >= 2 {
-            chartView.update(with: records)
+            // Pass high/low info to chart view
+            let high = (info.dayHigh != "--") ? info.dayHigh : nil
+            let low = (info.dayLow != "--") ? info.dayLow : nil
+            chartView.update(with: records, high: high, low: low)
             chartView.isHidden = false
         } else {
             chartView.isHidden = true

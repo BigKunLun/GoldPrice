@@ -79,15 +79,8 @@ class FloatingContentView: NSView {
         domesticCard!.translatesAutoresizingMaskIntoConstraints = false
         container.addArrangedSubview(domesticCard!)
 
-        // Separator line
-        let separator = NSView()
-        separator.wantsLayer = true
-        separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
-        separator.translatesAutoresizingMaskIntoConstraints = false
-        separator.heightAnchor.constraint(equalToConstant: 1).isActive = true
-        separator.alphaValue = 0.3
-        container.addArrangedSubview(separator)
-
+        // Separator line removed as per request, using chart axis as separator
+        
         // International card
         internationalCard = InternationalCardView()
         internationalCard!.translatesAutoresizingMaskIntoConstraints = false
@@ -106,7 +99,6 @@ class FloatingContentView: NSView {
 
         // Custom spacing
         container.setCustomSpacing(8, after: domesticCard!)
-        container.setCustomSpacing(12, after: separator)
         container.setCustomSpacing(6, after: internationalCard!)
 
         addSubview(container)
@@ -116,7 +108,6 @@ class FloatingContentView: NSView {
             container.leadingAnchor.constraint(equalTo: leadingAnchor),
             container.trailingAnchor.constraint(equalTo: trailingAnchor),
             domesticCard!.widthAnchor.constraint(equalTo: container.widthAnchor),
-            separator.widthAnchor.constraint(equalTo: container.widthAnchor, constant: -24),
             internationalCard!.widthAnchor.constraint(equalTo: container.widthAnchor)
         ])
     }
