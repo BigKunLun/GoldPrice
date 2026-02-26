@@ -4,6 +4,7 @@ JDGold.app/
 .build/
 *.o
 *.d
+*.ipa
 
 # macOS
 .DS_Store
@@ -14,12 +15,14 @@ JDGold.app/
 *.xcodeproj/
 *.xcworkspace/
 xcuserdata/
+DerivedData/
+
+# Swift Package Manager
+.swiftpm/
 
 # IDE
 .trae/
 .idea/
-*.xcodeproj/
-*.xcworkspace/
 docs/
 
 # Playwright

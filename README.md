@@ -53,7 +53,16 @@
 ## 安装
 
 ### 直接下载
-从 [Releases](https://github.com/BigKunLun/GoldPrice/releases) 下载最新版本。
+从 [Releases](https://github.com/BigKunLun/GoldPrice/releases) 下载最新版本，解压后将 `GoldPrice.app` 拖入 `/Applications` 文件夹。
+
+### 绕过安全检查
+由于应用未经过 Apple 公证，首次运行可能会被 macOS 拦截。解决方法：
+
+```bash
+xattr -cr /Applications/GoldPrice.app
+```
+
+或者在 **系统设置 → 隐私与安全性** 中点击「仍要打开」。
 
 ### 从源码编译
 ```bash
